@@ -33,7 +33,17 @@ def get_model_name() -> str | None:
     return _model_name
 
 
-def generate_speech(text: str, ref_audio_path: str, ref_text: str) -> tuple[bytes, float]:
+def generate_speech(
+    text: str,
+    ref_audio_path: str,
+    ref_text: str,
+    *,
+    temperature: float = 0.9,
+    top_k: int = 50,
+    top_p: float = 1.0,
+    repetition_penalty: float = 1.05,
+    speed: float = 1.0,
+) -> tuple[bytes, float]:
     """
     Generate speech audio using voice cloning.
 
@@ -46,6 +56,11 @@ def generate_speech(text: str, ref_audio_path: str, ref_text: str) -> tuple[byte
         text=text,
         ref_audio=ref_audio_path,
         ref_text=ref_text,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+        speed=speed,
     ))
 
     audio_array = results[0].audio

@@ -54,6 +54,17 @@ export interface Clip {
   created_at: string;
 }
 
+export interface TTSOptions {
+  temperature?: number;
+  top_k?: number;
+  top_p?: number;
+  repetition_penalty?: number;
+  speed?: number;
+  bass_gain?: number;
+  treble_gain?: number;
+  normalize?: boolean;
+}
+
 export interface TTSResult {
   id: string;
   voice_id: string;
@@ -106,10 +117,15 @@ export const api = {
     `${BASE}/voices/${voiceId}/clips/${clipId}/audio`,
 
   // TTS
-  generate: (voiceId: string, text: string, clipId?: string) =>
+  generate: (voiceId: string, text: string, clipId?: string, options?: TTSOptions) =>
     request<TTSResult>('/tts/generate', {
       method: 'POST',
-      body: JSON.stringify({ voice_id: voiceId, text, clip_id: clipId || null }),
+      body: JSON.stringify({
+        voice_id: voiceId,
+        text,
+        clip_id: clipId || null,
+        ...options,
+      }),
     }),
   getHistory: (voiceId?: string) =>
     request<TTSResult[]>(`/tts/history${voiceId ? `?voice_id=${voiceId}` : ''}`),

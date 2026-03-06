@@ -72,6 +72,18 @@ class TTSRequest(BaseModel):
     clip_id: str | None = None
     text: str
 
+    # Model generation parameters
+    temperature: float = 0.9
+    top_k: int = 50
+    top_p: float = 1.0
+    repetition_penalty: float = 1.05
+    speed: float = 1.0
+
+    # Audio post-processing
+    bass_gain: float = 0.0       # dB, range -20 to +20
+    treble_gain: float = 0.0     # dB, range -20 to +20
+    normalize: bool = False      # loudness normalization
+
 
 class TTSResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

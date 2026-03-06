@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { AudioLines, Download, Loader2, Trash2 } from 'lucide-react';
-import { api, type VoiceListItem, type Voice, type TTSResult } from '../api/client';
+import { AudioLines, Download, Loader2, Trash2, Settings2 } from 'lucide-react';
+import { api, type VoiceListItem, type Voice, type TTSResult, type TTSOptions } from '../api/client';
 
 function formatDuration(s: number): string {
   const m = Math.floor(s / 60);
@@ -23,6 +23,17 @@ export function GeneratePage() {
   const [history, setHistory] = useState<TTSResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<{ model_loaded: boolean } | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [options, setOptions] = useState<TTSOptions>({
+    temperature: 0.9,
+    top_k: 50,
+    top_p: 1.0,
+    repetition_penalty: 1.05,
+    speed: 1.0,
+    bass_gain: 0,
+    treble_gain: 0,
+    normalize: false,
+  });
 
   // Load voices and health on mount
   useEffect(() => {
@@ -54,6 +65,7 @@ export function GeneratePage() {
         selectedVoiceId,
         text.trim(),
         selectedClipId || undefined,
+        options,
       );
       setResult(res);
       setHistory((prev) => [res, ...prev]);
@@ -157,6 +169,170 @@ export function GeneratePage() {
             {text.length} / 5000
           </p>
         </div>
+
+        {/* Advanced options toggle */}
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors"
+        >
+          <Settings2 className="w-4 h-4" />
+          Opções avançadas
+          <span className="text-xs">{showAdvanced ? '▲' : '▼'}</span>
+        </button>
+
+        {showAdvanced && (
+          <div className="bg-bg border border-border rounded-lg p-4 space-y-5">
+            {/* Model parameters */}
+            <div>
+              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Parâmetros do modelo</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Temperature */}
+                <div>
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Temperatura</span>
+                    <span className="text-accent">{options.temperature?.toFixed(2)}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.01" max="2" step="0.01"
+                    value={options.temperature}
+                    onChange={(e) => setOptions({ ...options, temperature: parseFloat(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                  <p className="text-[10px] text-text-muted mt-0.5">Baixo = mais previsível · Alto = mais variado</p>
+                </div>
+
+                {/* Speed */}
+                <div>
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Velocidade</span>
+                    <span className="text-accent">{options.speed?.toFixed(2)}x</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.5" max="2" step="0.05"
+                    value={options.speed}
+                    onChange={(e) => setOptions({ ...options, speed: parseFloat(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                  <p className="text-[10px] text-text-muted mt-0.5">0.5x (lento) → 2x (rápido)</p>
+                </div>
+
+                {/* Top-K */}
+                <div>
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Top-K</span>
+                    <span className="text-accent">{options.top_k}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1" max="200" step="1"
+                    value={options.top_k}
+                    onChange={(e) => setOptions({ ...options, top_k: parseInt(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                  <p className="text-[10px] text-text-muted mt-0.5">Limita o número de tokens candidatos</p>
+                </div>
+
+                {/* Top-P */}
+                <div>
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Top-P</span>
+                    <span className="text-accent">{options.top_p?.toFixed(2)}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.1" max="1" step="0.01"
+                    value={options.top_p}
+                    onChange={(e) => setOptions({ ...options, top_p: parseFloat(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                  <p className="text-[10px] text-text-muted mt-0.5">Amostragem por probabilidade acumulada</p>
+                </div>
+
+                {/* Repetition Penalty */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Penalidade de repetição</span>
+                    <span className="text-accent">{options.repetition_penalty?.toFixed(2)}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1" max="2" step="0.01"
+                    value={options.repetition_penalty}
+                    onChange={(e) => setOptions({ ...options, repetition_penalty: parseFloat(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                  <p className="text-[10px] text-text-muted mt-0.5">Penaliza tokens já gerados (1.0 = desabilitado)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Separator */}
+            <hr className="border-border" />
+
+            {/* Audio EQ */}
+            <div>
+              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Equalização de áudio</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Bass */}
+                <div>
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Graves (Bass)</span>
+                    <span className="text-accent">{(options.bass_gain ?? 0) > 0 ? '+' : ''}{options.bass_gain?.toFixed(0)} dB</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="-20" max="20" step="1"
+                    value={options.bass_gain}
+                    onChange={(e) => setOptions({ ...options, bass_gain: parseFloat(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                </div>
+
+                {/* Treble */}
+                <div>
+                  <label className="text-xs text-text-muted flex justify-between mb-1">
+                    <span>Agudos (Treble)</span>
+                    <span className="text-accent">{(options.treble_gain ?? 0) > 0 ? '+' : ''}{options.treble_gain?.toFixed(0)} dB</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="-20" max="20" step="1"
+                    value={options.treble_gain}
+                    onChange={(e) => setOptions({ ...options, treble_gain: parseFloat(e.target.value) })}
+                    className="w-full accent-accent"
+                  />
+                </div>
+              </div>
+
+              {/* Normalize */}
+              <label className="flex items-center gap-2 mt-3 text-sm text-text cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={options.normalize}
+                  onChange={(e) => setOptions({ ...options, normalize: e.target.checked })}
+                  className="accent-accent w-4 h-4"
+                />
+                Normalizar volume (EBU R128)
+              </label>
+            </div>
+
+            {/* Reset button */}
+            <button
+              type="button"
+              onClick={() => setOptions({
+                temperature: 0.9, top_k: 50, top_p: 1.0,
+                repetition_penalty: 1.05, speed: 1.0,
+                bass_gain: 0, treble_gain: 0, normalize: false,
+              })}
+              className="text-xs text-text-muted hover:text-accent transition-colors underline"
+            >
+              Restaurar padrões
+            </button>
+          </div>
+        )}
 
         {/* Generate button */}
         <button

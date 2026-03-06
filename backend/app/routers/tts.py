@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import Voice, VoiceClip, GeneratedAudio
 from app.schemas import TTSRequest, TTSResponse, HealthResponse
 from app.services.tts import generate_speech, is_model_loaded, get_model_name
+from app.services.audio import postprocess_audio, AudioValidationError
 
 router = APIRouter(prefix="/api/tts", tags=["tts"])
 
@@ -48,6 +49,11 @@ def generate_audio(body: TTSRequest, db: Session = Depends(get_db)):
             text=body.text,
             ref_audio_path=ref_audio_path,
             ref_text=clip.transcript,
+            temperature=body.temperature,
+            top_k=body.top_k,
+            top_p=body.top_p,
+            repetition_penalty=body.repetition_penalty,
+            speed=body.speed,
         )
     except Exception as e:
         raise HTTPException(500, f"TTS generation failed: {e}")
@@ -66,6 +72,27 @@ def generate_audio(body: TTSRequest, db: Session = Depends(get_db)):
     filename = f"{record.id}.wav"
     output_path = GENERATED_DIR / filename
     output_path.write_bytes(wav_bytes)
+
+    # Apply post-processing (EQ / normalization) if requested
+    needs_postprocess = body.bass_gain != 0.0 or body.treble_gain != 0.0 or body.normalize
+    if needs_postprocess:
+        try:
+            processed_path = GENERATED_DIR / f"{record.id}_eq.wav"
+            postprocess_audio(
+                output_path, processed_path,
+                bass_gain=body.bass_gain,
+                treble_gain=body.treble_gain,
+                normalize=body.normalize,
+            )
+            # Replace original with processed version
+            processed_path.replace(output_path)
+            # Re-read duration after processing
+            from app.services.audio import get_audio_duration
+            duration = get_audio_duration(output_path)
+            record.duration = duration
+        except AudioValidationError as e:
+            # Post-processing failed but we still have the raw audio
+            pass
 
     record.filename = filename
     db.commit()
