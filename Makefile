@@ -13,6 +13,8 @@ install-frontend: ## Install frontend Node dependencies
 # --- Development ---
 
 dev: ## Run backend and frontend concurrently
+	@lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+	@lsof -ti:5173 | xargs kill -9 2>/dev/null || true
 	@trap 'kill 0' EXIT; \
 	$(MAKE) dev-backend & \
 	$(MAKE) dev-frontend & \
