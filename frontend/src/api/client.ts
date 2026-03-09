@@ -63,6 +63,7 @@ export interface TTSOptions {
   bass_gain?: number;
   treble_gain?: number;
   normalize?: boolean;
+  instruct_text?: string;
 }
 
 export interface TTSResult {

@@ -71,6 +71,7 @@ class TTSRequest(BaseModel):
     voice_id: str
     clip_id: str | None = None
     text: str
+    instruct_text: str | None = None  # Annotated text with inline expression instructions
 
     # Model generation parameters
     temperature: float = 0.9

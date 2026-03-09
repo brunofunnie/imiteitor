@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { AudioLines, Download, Loader2, Trash2, Settings2 } from 'lucide-react';
 import { api, type VoiceListItem, type Voice, type TTSResult, type TTSOptions } from '../api/client';
+import { InstructEditor, generateInstructText, type Annotation } from '../components/InstructEditor';
 
 function formatDuration(s: number): string {
   const m = Math.floor(s / 60);
@@ -18,6 +19,7 @@ export function GeneratePage() {
   const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
   const [selectedClipId, setSelectedClipId] = useState('');
   const [text, setText] = useState('');
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<TTSResult | null>(null);
   const [history, setHistory] = useState<TTSResult[]>([]);
@@ -61,11 +63,14 @@ export function GeneratePage() {
     setError(null);
     setResult(null);
     try {
+      const instructText = annotations.length > 0
+        ? generateInstructText(text.trim(), annotations)
+        : undefined;
       const res = await api.generate(
         selectedVoiceId,
         text.trim(),
         selectedClipId || undefined,
-        options,
+        { ...options, instruct_text: instructText },
       );
       setResult(res);
       setHistory((prev) => [res, ...prev]);
@@ -154,21 +159,13 @@ export function GeneratePage() {
           </div>
         )}
 
-        {/* Text input */}
-        <div>
-          <label className="text-xs text-text-muted block mb-1">Texto para sintetizar</label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Digite o texto que você quer ouvir na voz selecionada..."
-            rows={5}
-            maxLength={5000}
-            className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text resize-y focus:outline-none focus:border-accent"
-          />
-          <p className="text-xs text-text-muted text-right mt-1">
-            {text.length} / 5000
-          </p>
-        </div>
+        {/* Text input with instruct annotations */}
+        <InstructEditor
+          text={text}
+          onTextChange={setText}
+          annotations={annotations}
+          onAnnotationsChange={setAnnotations}
+        />
 
         {/* Advanced options toggle */}
         <button

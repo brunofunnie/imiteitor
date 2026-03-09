@@ -6,7 +6,7 @@ from app.config import VOICES_DIR, GENERATED_DIR
 from app.database import get_db
 from app.models import Voice, VoiceClip, GeneratedAudio
 from app.schemas import TTSRequest, TTSResponse, HealthResponse
-from app.services.tts import generate_speech, is_model_loaded, get_model_name
+from app.services.tts import generate_speech, is_model_loaded, is_instruct_model_loaded, get_model_name
 from app.services.audio import postprocess_audio, AudioValidationError
 
 router = APIRouter(prefix="/api/tts", tags=["tts"])
@@ -54,6 +54,7 @@ def generate_audio(body: TTSRequest, db: Session = Depends(get_db)):
             top_p=body.top_p,
             repetition_penalty=body.repetition_penalty,
             speed=body.speed,
+            instruct_text=body.instruct_text,
         )
     except Exception as e:
         raise HTTPException(500, f"TTS generation failed: {e}")

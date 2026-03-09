@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run python -c \"import uvicorn; print\\(uvicorn.__file__\\)\")",
+      "Bash(uv run uvicorn --version)",
+      "Bash(lsof -ti:8000)",
+      "Bash(kill 12146 27033)",
+      "Bash(pip show mlx-audio)",
+      "Bash(python3 -c \"import mlx_audio; print\\(mlx_audio.__file__\\)\")",
+      "Bash(python3 -c \":*)",
+      "Bash(uv run python -c \":*)"
+    ],
+    "additionalDirectories": [
+      "/Users/bruno/projects/funnietech/imiteitor/backend/.venv"
+    ]
+  }
+}

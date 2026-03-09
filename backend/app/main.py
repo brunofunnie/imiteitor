@@ -8,13 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import FRONTEND_URL, TTS_MODEL
+from app.config import FRONTEND_URL, TTS_MODEL, TTS_MODEL_INSTRUCT
 from app.database import engine, Base
 from app.routers.voices import router as voices_router
 from app.routers.clips import router as clips_router
 from app.routers.tts import router as tts_router, health_router
 from app.routers.transcribe import router as transcribe_router
-from app.services.tts import load_tts_model
+from app.services.tts import load_tts_model, load_instruct_model
 from app.services.stt import load_stt_model
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
@@ -29,6 +29,12 @@ def _load_models_background():
     except Exception as e:
         logger.error(f"Failed to load TTS model: {e}")
         logger.warning("App will run without TTS capability.")
+
+    try:
+        load_instruct_model(TTS_MODEL_INSTRUCT)
+    except Exception as e:
+        logger.error(f"Failed to load instruct TTS model: {e}")
+        logger.warning("App will run without instruct/emotion TTS capability.")
 
     try:
         load_stt_model()
