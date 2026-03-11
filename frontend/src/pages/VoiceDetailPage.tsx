@@ -1,14 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
-import { api, type Voice, type ClipSummary } from '../api/client';
+import { api, type Voice } from '../api/client';
 import { AudioRecorder } from '../components/AudioRecorder';
 import { AudioUploader } from '../components/AudioUploader';
 import { ClipPlayer } from '../components/ClipPlayer';
 
 export function VoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   const [voice, setVoice] = useState<Voice | null>(null);
   const [loading, setLoading] = useState(true);

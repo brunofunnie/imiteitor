@@ -7,9 +7,9 @@ GENERATED_DIR = DATA_DIR / "generated"
 DB_PATH = DATA_DIR / "imiteitor.db"
 DB_URL = f"sqlite:///{DB_PATH}"
 
-TTS_MODEL = "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"
-TTS_MODEL_LITE = "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-bf16"
-TTS_MODEL_INSTRUCT = "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit"
+TTS_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+TTS_MODEL_LITE = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+TTS_MODEL_INSTRUCT = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 
 AUDIO_SAMPLE_RATE = 24000
 AUDIO_MIN_DURATION = 10  # seconds

@@ -3,6 +3,7 @@ import logging
 
 import numpy as np
 import soundfile as sf
+import torch
 
 from app.config import AUDIO_SAMPLE_RATE
 
@@ -15,81 +16,17 @@ _instruct_model = None
 _instruct_model_name: str | None = None
 
 
-def _generate_instruct_with_voice(
-    text: str,
-    ref_audio_path: str,
-    instruct: str,
-    *,
-    temperature: float = 0.9,
-    top_k: int = 50,
-    top_p: float = 1.0,
-    repetition_penalty: float = 1.05,
-    speed: float = 1.0,
-) -> list:
-    """Generate speech with emotion/style control AND voice identity.
-
-    Uses the Base model's speaker_encoder to extract a voice embedding from
-    ref_audio, then injects it into the CustomVoice model's generation pipeline
-    which natively supports instruct for emotion/style control.
-
-    Strategy:
-    1. Extract speaker embedding using Base model's speaker_encoder
-    2. Give the CustomVoice model a fake speaker_encoder that returns it
-    3. Patch _prepare_generation_inputs to pass ref_audio so the speaker
-       embedding extraction path is triggered, placing it correctly in
-       the codec prefix structure
-    """
-    from mlx_audio.utils import load_audio
-
-    # 1. Extract speaker embedding from ref_audio using the Base model's encoder
-    _ref_audio = load_audio(ref_audio_path, sample_rate=_model.sample_rate)
-    speaker_embed = _model.extract_speaker_embedding(_ref_audio)
-
-    # 2. Fake speaker encoder that returns our pre-computed embedding
-    class _FakeSpeakerEncoder:
-        def __call__(self, *args, **kwargs):
-            return speaker_embed
-
-    orig_encoder = _instruct_model.speaker_encoder
-    _instruct_model.speaker_encoder = _FakeSpeakerEncoder()
-
-    # 3. Patch _prepare_generation_inputs to pass ref_audio, triggering
-    #    the speaker embedding path at line 306-307 of the library
-    orig_prep = _instruct_model._prepare_generation_inputs
-
-    def prep_with_ref(text=None, language="auto", speaker=None,
-                      ref_audio=None, ref_text=None, instruct=None, **kwargs):
-        return orig_prep(text, language=language, speaker=speaker,
-                         ref_audio=_ref_audio, ref_text=None, instruct=instruct)
-
-    _instruct_model._prepare_generation_inputs = prep_with_ref
-    try:
-        results = list(_instruct_model._generate_with_instruct(
-            text=text,
-            speaker=None,
-            language="auto",
-            instruct=instruct,
-            temperature=temperature,
-            max_tokens=4096,
-            top_k=top_k,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            verbose=False,
-        ))
-    finally:
-        _instruct_model._prepare_generation_inputs = orig_prep
-        _instruct_model.speaker_encoder = orig_encoder
-
-    return results
-
-
 def load_tts_model(model_name: str):
     """Load the TTS model. Called once during app startup."""
     global _model, _model_name
-    from mlx_audio.tts.utils import load_model
+    from qwen_tts import Qwen3TTSModel
 
     logger.info(f"Loading TTS model: {model_name}")
-    _model = load_model(model_name)
+    _model = Qwen3TTSModel.from_pretrained(
+        model_name,
+        device_map="cuda:0",
+        dtype=torch.bfloat16,
+    )
     _model_name = model_name
     logger.info("TTS model loaded successfully")
 
@@ -97,10 +34,14 @@ def load_tts_model(model_name: str):
 def load_instruct_model(model_name: str):
     """Load the CustomVoice instruct model. Called during app startup."""
     global _instruct_model, _instruct_model_name
-    from mlx_audio.tts.utils import load_model
+    from qwen_tts import Qwen3TTSModel
 
     logger.info(f"Loading instruct TTS model: {model_name}")
-    _instruct_model = load_model(model_name)
+    _instruct_model = Qwen3TTSModel.from_pretrained(
+        model_name,
+        device_map="cuda:0",
+        dtype=torch.bfloat16,
+    )
     _instruct_model_name = model_name
     logger.info("Instruct TTS model loaded successfully")
 
@@ -137,41 +78,43 @@ def generate_speech(
     if _model is None:
         raise RuntimeError("TTS model not loaded")
 
+    gen_kwargs = dict(
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+    )
+
     if instruct_text and _instruct_model is not None:
-        # Use the CustomVoice model with instruct support.
-        # Extract speaker embedding from ref_audio using the Base model's encoder,
-        # then inject it into the CustomVoice model's generation for voice identity.
-        results = _generate_instruct_with_voice(
+        # Use CustomVoice model with instruct for emotion/style control.
+        # First, build a voice clone prompt from the Base model to capture
+        # the speaker identity, then use the instruct model with a preset
+        # speaker and the instruct text.
+        wavs, sr = _instruct_model.generate_custom_voice(
             text=text,
-            ref_audio_path=ref_audio_path,
+            language="auto",
+            speaker="Chelsie",
             instruct=instruct_text,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            speed=speed,
+            **gen_kwargs,
         )
     else:
         # Standard ICL path: best voice cloning fidelity
-        results = list(_model.generate(
+        wavs, sr = _model.generate_voice_clone(
             text=text,
+            language="auto",
             ref_audio=ref_audio_path,
             ref_text=ref_text,
-            temperature=temperature,
-            top_k=top_k,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            speed=speed,
-        ))
+            **gen_kwargs,
+        )
 
-    audio_array = results[0].audio
+    audio_array = wavs[0]
     if isinstance(audio_array, np.ndarray) and audio_array.ndim > 1:
         audio_array = audio_array.squeeze()
 
     # Convert numpy array to WAV bytes
     buf = io.BytesIO()
-    sf.write(buf, audio_array, AUDIO_SAMPLE_RATE, format="WAV", subtype="PCM_16")
+    sf.write(buf, audio_array, sr, format="WAV", subtype="PCM_16")
     wav_bytes = buf.getvalue()
 
-    duration = len(audio_array) / AUDIO_SAMPLE_RATE
+    duration = len(audio_array) / sr
     return wav_bytes, duration

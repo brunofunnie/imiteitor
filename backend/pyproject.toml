@@ -1,21 +1,32 @@
 [project]
 name = "imiteitor-backend"
 version = "0.1.0"
-description = "TTS voice cloning app using Qwen3-TTS via MLX Audio"
+description = "TTS voice cloning app using Qwen3-TTS via CUDA"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "sqlalchemy>=2.0",
     "alembic>=1.14",
-    "mlx-audio[tts] @ git+https://github.com/Blaizzy/mlx-audio.git",
+    "qwen-tts",
+    "torch>=2.9",
+    "torchaudio>=2.9",
+    "faster-whisper>=1.1",
     "pydub>=0.25",
     "python-multipart>=0.0.18",
     "aiofiles>=24.1",
     "numpy>=1.26",
     "soundfile>=0.12",
-    "mlx-whisper>=0.4",
 ]
 
 [tool.uv]
 python-preference = "system"
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }

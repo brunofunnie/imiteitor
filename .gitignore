@@ -14,6 +14,9 @@ frontend/dist/
 
 # Data / runtime
 backend/data/
+models/
+certs/
+data/
 
 # OS
 .DS_Store

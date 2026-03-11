@@ -1,0 +1,19 @@
+.git/
+.gitignore
+*.md
+openspec/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+
+# Backend dev artifacts
+backend/.venv/
+backend/__pycache__/
+backend/data/
+backend/**/__pycache__/
+
+# Docker
+certs/
+models/
+docker-compose.yml
